@@ -1,0 +1,47 @@
+@'
+# === SO / Editor ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === Node / Angular ===
+node_modules/
+dist/
+.angular/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ¡Dejá los lockfiles versionados!
+#!package-lock.json
+#!yarn.lock
+
+# === .NET / Visual Studio ===
+**/bin/
+**/obj/
+**/out/
+.vs/
+*.user
+*.suo
+*.vspscc
+*.vssscc
+
+# Paquetes / artefactos
+*.nupkg
+*.snupkg
+
+# Publicaciones locales
+*.Publish.xml
+*.pubxml
+*.publishproj
+
+# Archivos con secretos locales (ignoralos si existen)
+# secrets.json
+#.env
+
+# === ABP / EF ===
+# No ignores Migrations ni appsettings por defecto
+'@ | Out-File -Encoding utf8 .gitignore
