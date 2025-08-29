@@ -14,7 +14,7 @@ namespace WB.EntrevistaABP.Application.Contracts.Dtos
 
         [Required] public MedioDeTransporte MedioDeTransporte { get; set; }
 
-        // Coordinador: o Id existente o datos para crearlo (PasajeroDto) -> en el servicio se valida XOR
+        // Coordinador: o Id existente o datos para crearlo (PasajeroDto)
         public Guid? CoordinadorId { get; set; }
         public PasajeroDto? CoordinadorNuevo { get; set; }
 

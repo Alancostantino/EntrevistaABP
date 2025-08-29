@@ -1,5 +1,5 @@
 using System;
-using System.Linq; // 👈 para string.Join sobre result.Errors
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
@@ -35,9 +35,9 @@ namespace WB.EntrevistaABP.Application.Servicios
 
         public async Task<ViajeDto> CrearAsync(CrearViajeDto input)
         {
-            // ===============================
+            
             // 1) VALIDACIONES BÁSICAS
-            // ===============================
+            
             if (input.FechaLlegada <= input.FechaSalida)
                 throw new BusinessException("FechaLlegadaDebeSerMayorQueSalida");
 
@@ -49,9 +49,9 @@ namespace WB.EntrevistaABP.Application.Servicios
             if (traeId == traeNuevo) // ambos o ninguno
                 throw new BusinessException("DebeIndicarCoordinadorExistenteOCoordinadorNuevo");
 
-            // ===============================
+            
             // 2) RESOLVER COORDINADOR
-            // ===============================
+          
             Pasajero coordinador;
 
             if (traeId)
@@ -74,7 +74,7 @@ namespace WB.EntrevistaABP.Application.Servicios
                     var user = await _userManager.FindByNameAsync(userName);
                     if (user == null)
                     {
-                        var email = $"{userName}@demo.local"; // placeholder
+                        var email = $"{userName}@demo.local"; 
                         user = new IdentityUser(_guid.Create(), userName, email, CurrentTenant.Id);
 
                         // ⚠️ En vez de .CheckErrors(), validamos a mano el resultado
@@ -87,7 +87,7 @@ namespace WB.EntrevistaABP.Application.Servicios
                     }
 
                     // B.3) Crear PASAJERO vinculado al user
-                    coordinador = new Pasajero(_guid.Create()) // 👈 seteamos Id en el ctor
+                    coordinador = new Pasajero(_guid.Create()) // seteamos Id en el ctor
                     {
                         Nombre          = nuevo.Nombre,
                         Apellido        = nuevo.Apellido,
@@ -101,10 +101,9 @@ namespace WB.EntrevistaABP.Application.Servicios
                 // Si ya existía pasajero por DNI, lo reutilizamos tal cual
             }
 
-            // ===============================
             // 3) CREAR EL VIAJE
-            // ===============================
-            var viaje = new Viaje(_guid.Create()) // 👈 seteamos Id en el ctor
+           
+            var viaje = new Viaje(_guid.Create()) // seteamos Id en el ctor
             {
                 FechaSalida       = input.FechaSalida,
                 FechaLlegada      = input.FechaLlegada,
@@ -115,14 +114,14 @@ namespace WB.EntrevistaABP.Application.Servicios
                 Coordinador       = coordinador
             };
 
-            // Regla del negocio: el coorddotinador también viaja
+            // Regla del negocio: el coordinador también viaja
             viaje.Pasajeros.Add(coordinador); // EF insertará en 'PasajerosViajes'
 
             await _viajeRepo.InsertAsync(viaje, autoSave: true);
 
-            // ===============================
+            
             // 4) MAPEAR A DTO Y DEVOLVER
-            // ===============================
+           
             return ObjectMapper.Map<Viaje, ViajeDto>(viaje);
         }
     }
