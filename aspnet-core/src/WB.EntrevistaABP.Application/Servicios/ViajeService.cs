@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
@@ -10,10 +11,11 @@ using Volo.Abp.Identity;
 using WB.EntrevistaABP.Application.Contracts.Dtos;
 using WB.EntrevistaABP.Application.Contracts.Interfaces;
 using WB.EntrevistaABP.Domain.Entidades;
+using WB.EntrevistaABP.Permissions;
 
 namespace WB.EntrevistaABP.Application.Servicios
 {
-    [Authorize]
+    [Authorize(EntrevistaABPPermissions.Viajes.Default)]
     public class ViajeService : ApplicationService, IViajeServicio
     {
         private readonly IRepository<Viaje, Guid> _viajeRepo;
@@ -27,31 +29,32 @@ namespace WB.EntrevistaABP.Application.Servicios
             IdentityUserManager userManager,
             IGuidGenerator guid)
         {
-            _viajeRepo    = viajeRepo;
+            _viajeRepo = viajeRepo;
             _pasajeroRepo = pasajeroRepo;
-            _userManager  = userManager;
-            _guid         = guid;
+            _userManager = userManager;
+            _guid = guid;
         }
 
+        [Authorize(EntrevistaABPPermissions.Viajes.Create)]
         public async Task<ViajeDto> CrearAsync(CrearViajeDto input)
         {
-            
+
             // 1) VALIDACIONES BÁSICAS
-            
+
             if (input.FechaLlegada <= input.FechaSalida)
                 throw new BusinessException("FechaLlegadaDebeSerMayorQueSalida");
 
             if (string.Equals(input.Origen, input.Destino, StringComparison.OrdinalIgnoreCase))
                 throw new BusinessException("OrigenYDestinoNoPuedenSerIguales");
 
-            var traeId    = input.CoordinadorId.HasValue;
+            var traeId = input.CoordinadorId.HasValue;
             var traeNuevo = input.CoordinadorNuevo != null;
             if (traeId == traeNuevo) // ambos o ninguno
                 throw new BusinessException("DebeIndicarCoordinadorExistenteOCoordinadorNuevo");
 
-            
+
             // 2) RESOLVER COORDINADOR
-          
+
             Pasajero coordinador;
 
             if (traeId)
@@ -74,26 +77,21 @@ namespace WB.EntrevistaABP.Application.Servicios
                     var user = await _userManager.FindByNameAsync(userName);
                     if (user == null)
                     {
-                        var email = $"{userName}@demo.local"; 
+                        var email = $"{userName}@demo.local";
                         user = new IdentityUser(_guid.Create(), userName, email, CurrentTenant.Id);
 
-                        // ⚠️ En vez de .CheckErrors(), validamos a mano el resultado
-                        var createResult = await _userManager.CreateAsync(user, "1q2w3E*");
-                        if (!createResult.Succeeded)
-                        {
-                            var errors = string.Join(" | ", createResult.Errors.Select(e => $"{e.Code}:{e.Description}"));
-                            throw new BusinessException("IdentityUserCreationFailed").WithData("errors", errors);
-                        }
+                        (await _userManager.CreateAsync(user, "1q2w3E*")).CheckErrors();
+                        (await _userManager.AddToRoleAsync(user, "client")).CheckErrors();//Asigna el rol al usuario
                     }
 
                     // B.3) Crear PASAJERO vinculado al user
                     coordinador = new Pasajero(_guid.Create()) // seteamos Id en el ctor
                     {
-                        Nombre          = nuevo.Nombre,
-                        Apellido        = nuevo.Apellido,
-                        DNI             = nuevo.DNI,
+                        Nombre = nuevo.Nombre,
+                        Apellido = nuevo.Apellido,
+                        DNI = nuevo.DNI,
                         FechaNacimiento = nuevo.FechaNacimiento,
-                        UserId          = user.Id
+                        UserId = user.Id
                     };
 
                     await _pasajeroRepo.InsertAsync(coordinador, autoSave: true);
@@ -102,26 +100,27 @@ namespace WB.EntrevistaABP.Application.Servicios
             }
 
             // 3) CREAR EL VIAJE
-           
+
             var viaje = new Viaje(_guid.Create()) // seteamos Id en el ctor
             {
-                FechaSalida       = input.FechaSalida,
-                FechaLlegada      = input.FechaLlegada,
-                Origen            = input.Origen,
-                Destino           = input.Destino,
+                FechaSalida = input.FechaSalida,
+                FechaLlegada = input.FechaLlegada,
+                Origen = input.Origen,
+                Destino = input.Destino,
                 MedioDeTransporte = input.MedioDeTransporte,
-                CoordinadorId     = coordinador.Id,
-                Coordinador       = coordinador
+                CoordinadorId = coordinador.Id,
+                Coordinador = coordinador
             };
 
             // Regla del negocio: el coordinador también viaja
-            viaje.Pasajeros.Add(coordinador); // EF insertará en 'PasajerosViajes'
+            if (!viaje.Pasajeros.Any(p => p.Id == coordinador.Id)) //EVITAR DUPLCIADOS.
+                viaje.Pasajeros.Add(coordinador); // EF insertará en 'PasajerosViajes'
 
             await _viajeRepo.InsertAsync(viaje, autoSave: true);
 
-            
+
             // 4) MAPEAR A DTO Y DEVOLVER
-           
+
             return ObjectMapper.Map<Viaje, ViajeDto>(viaje);
         }
     }
