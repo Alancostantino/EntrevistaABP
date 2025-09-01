@@ -8,9 +8,14 @@ public class EntrevistaABPPermissionDefinitionProvider : PermissionDefinitionPro
 {
     public override void Define(IPermissionDefinitionContext context)
     {
-        var myGroup = context.AddGroup(EntrevistaABPPermissions.GroupName);
-        //Define your own permissions here. Example:
-        //myGroup.AddPermission(EntrevistaABPPermissions.MyPermission1, L("Permission:MyPermission1"));
+       var group = context.AddGroup(EntrevistaABPPermissions.GroupName); //Registra el grupo de Permisos.
+
+    //Agrega permisos y definirlo en el sistema (en memoria)
+        group.AddPermission(EntrevistaABPPermissions.Viajes.Default);
+        group.AddPermission(EntrevistaABPPermissions.Viajes.Create);
+        group.AddPermission(EntrevistaABPPermissions.Viajes.Update);
+        group.AddPermission(EntrevistaABPPermissions.Viajes.Delete);
+        group.AddPermission(EntrevistaABPPermissions.Viajes.ManagePassengers);
     }
 
     private static LocalizableString L(string name)

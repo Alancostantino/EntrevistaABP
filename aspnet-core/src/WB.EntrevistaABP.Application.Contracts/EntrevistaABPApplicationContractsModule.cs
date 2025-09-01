@@ -6,6 +6,7 @@ using Volo.Abp.ObjectExtending;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.TenantManagement;
+using Volo.Abp.Authorization.Permissions;
 
 namespace WB.EntrevistaABP;
 
@@ -24,5 +25,16 @@ public class EntrevistaABPApplicationContractsModule : AbpModule
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
         EntrevistaABPDtoExtensions.Configure();
+    } 
+
+//Agregar permissionProvider al modulo 
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        Configure<AbpPermissionOptions>(options =>
+        {
+            options.DefinitionProviders.Add(
+                typeof(WB.EntrevistaABP.Permissions.EntrevistaABPPermissionDefinitionProvider)
+            );
+        });
     }
 }
