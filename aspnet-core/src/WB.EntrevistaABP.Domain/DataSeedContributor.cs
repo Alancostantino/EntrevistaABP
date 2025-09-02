@@ -33,12 +33,12 @@ namespace WB.EntrevistaABP
         }
 
         
-        // [UnitOfWork] asegura que todo esto corra en una transacción.
+
        
         [UnitOfWork]
         public async Task SeedAsync(DataSeedContext context)
         {
-            // 1) Crear roles si no existen
+            // Crear roles si no existen
             var adminRole  = await _roleManager.FindByNameAsync("admin");
             if (adminRole == null)
             {
@@ -53,7 +53,7 @@ namespace WB.EntrevistaABP
                 (await _roleManager.CreateAsync(clientRole)).CheckErrors();
             }
 
-            // 2) Conceder permisos a roles (tabla AbpPermissionGrants)
+            // Conceder permisos a roles (tabla AbpPermissionGrants)
             //    Admin: todos los permisos de viajes
             var allViajesPerms = new[]
             {
