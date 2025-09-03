@@ -32,9 +32,11 @@ public class EntrevistaABPApplicationContractsModule : AbpModule
     {
         Configure<AbpPermissionOptions>(options =>
         {
-            options.DefinitionProviders.Add(
-                typeof(WB.EntrevistaABP.Permissions.EntrevistaABPPermissionDefinitionProvider)
-            );
+            var providerType = typeof(WB.EntrevistaABP.Permissions.EntrevistaABPPermissionDefinitionProvider);
+             if (!options.DefinitionProviders.Contains(providerType))
+            {
+                options.DefinitionProviders.Add(providerType);
+            }
         });
     }
 }

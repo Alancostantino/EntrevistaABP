@@ -39,7 +39,7 @@ namespace WB.EntrevistaABP.Application.Servicios
         }
 
         [Authorize(EntrevistaABPPermissions.Viajes.Create)]
-        public async Task<ViajeDto> CrearAsync(CrearViajeDto input)
+        public async Task<ViajeDto> CreateAsync(CrearViajeDto input)
         {
 
             // 1) VALIDACIONES BÁSICAS
@@ -126,7 +126,9 @@ namespace WB.EntrevistaABP.Application.Servicios
 
         public async Task<PagedResultDto<ViajeDto>> GetListAsync(GetViajesDto input)
         {
-            var query = await _viajeRepo.GetQueryableAsync();
+            var query = (await _viajeRepo.WithDetailsAsync(
+                v => v.Coordinador,
+                v => v.Pasajeros));
 
             // Filtro por rango de fecha de salida
             query = query
@@ -175,14 +177,14 @@ namespace WB.EntrevistaABP.Application.Servicios
             );
 
             if (tienePasajeros)
-                throw new BusinessException("Viaje.NoSePuedeEliminarConPasajeros")
-                      .WithData("Reason", "El viaje tiene pasajeros asignados. Quite los pasajeros antes de eliminar.");
+                throw new BusinessException("Viaje.NoSePuedeEliminarConPasajeros");
+                      
 
             // 3) Borrar 
             await _viajeRepo.DeleteAsync(id);
         }
 
-        [Authorize(EntrevistaABPPermissions.Viajes.Update)] 
+        [Authorize(EntrevistaABPPermissions.Viajes.Update)]
         public async Task<ViajeDto> UpdateAsync(UpdateViajeDto input)
         {
             // Validar entradas  
@@ -209,7 +211,7 @@ namespace WB.EntrevistaABP.Application.Servicios
 
             await _viajeRepo.UpdateAsync(viaje);
 
-        
+
             return ObjectMapper.Map<Viaje, ViajeDto>(viaje);
         }
 

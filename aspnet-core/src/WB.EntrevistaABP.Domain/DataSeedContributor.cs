@@ -1,60 +1,58 @@
 using System.Threading.Tasks;
-using Volo.Abp.Authorization.Permissions;   
-using Volo.Abp.Data;                        
-using Volo.Abp.DependencyInjection;        
-using Volo.Abp.Guids;                      
-using Volo.Abp.Identity;                    
-using Volo.Abp.PermissionManagement;        
-using Volo.Abp.Uow;                         
-using WB.EntrevistaABP.Permissions;
-using Microsoft.AspNetCore.Identity;        
+using Volo.Abp.Authorization.Permissions;
+using Volo.Abp.Data;
+using Volo.Abp.DependencyInjection;
+using Volo.Abp.Guids;
+using Volo.Abp.Identity;
+using Volo.Abp.PermissionManagement;
+using Volo.Abp.Uow;
+using Volo.Abp.MultiTenancy;
+using Microsoft.AspNetCore.Identity;
+using WB.EntrevistaABP.Permissions; // ⬅️ para ICurrentTenant
 
 namespace WB.EntrevistaABP
 {
-
-
-    // Crea roles "admin" y "client" si no existen.
-    // Concede permisos de Viajes a cada rol
-  
     public class DataSeedContributor : IDataSeedContributor, ITransientDependency
     {
-        private readonly IdentityRoleManager _roleManager;   // Crear/consultar roles
-        private readonly IPermissionManager _permissionMgr;  // Grabar grants (rol → permiso) en BD
-        private readonly IGuidGenerator _guid;               // Genera GUIDs según convención ABP
+        private readonly IdentityRoleManager _roleManager;
+        private readonly IPermissionManager _permissionMgr;
+        private readonly IGuidGenerator _guid;
+        private readonly ICurrentTenant _currentTenant; // ⬅️ inyectá el tenant actual
 
         public DataSeedContributor(
             IdentityRoleManager roleManager,
             IPermissionManager permissionManager,
-            IGuidGenerator guid)
+            IGuidGenerator guid,
+            ICurrentTenant currentTenant)
         {
             _roleManager = roleManager;
             _permissionMgr = permissionManager;
             _guid = guid;
+            _currentTenant = currentTenant;
         }
 
-        
-
-       
         [UnitOfWork]
         public async Task SeedAsync(DataSeedContext context)
         {
-            // Crear roles si no existen
-            var adminRole  = await _roleManager.FindByNameAsync("admin");
+            // aseguro que todo lo de abajo se ejecute en el tenant correcto
+            using var change = _currentTenant.Change(context.TenantId);
+
+            // crear roles con TenantId del contexto
+            var adminRole = await _roleManager.FindByNameAsync("admin");
             if (adminRole == null)
             {
-                adminRole = new IdentityRole(_guid.Create(), "admin");
+                adminRole = new IdentityRole(_guid.Create(), "admin", _currentTenant.Id);
                 (await _roleManager.CreateAsync(adminRole)).CheckErrors();
             }
 
             var clientRole = await _roleManager.FindByNameAsync("client");
             if (clientRole == null)
             {
-                clientRole = new IdentityRole(_guid.Create(), "client");
+                clientRole = new IdentityRole(_guid.Create(), "client", _currentTenant.Id);
                 (await _roleManager.CreateAsync(clientRole)).CheckErrors();
             }
 
-            // Conceder permisos a roles (tabla AbpPermissionGrants)
-            //    Admin: todos los permisos de viajes
+            // permisos de Viajes
             var allViajesPerms = new[]
             {
                 EntrevistaABPPermissions.Viajes.Default,
@@ -67,17 +65,16 @@ namespace WB.EntrevistaABP
             foreach (var perm in allViajesPerms)
             {
                 await _permissionMgr.SetAsync(
-                    RolePermissionValueProvider.ProviderName, // proveedor "por rol"
-                    adminRole.Name,                           // clave = nombre del rol
-                    perm,                                     // permiso a conceder
-                    true                                      // conceder = true
+                    RolePermissionValueProvider.ProviderName,
+                    adminRole.Name, // "admin"
+                    perm,
+                    true
                 );
             }
 
-            //    Client: solo ver/listar (Default)
             await _permissionMgr.SetAsync(
                 RolePermissionValueProvider.ProviderName,
-                clientRole.Name,
+                clientRole.Name, // "client"
                 EntrevistaABPPermissions.Viajes.Default,
                 true
             );

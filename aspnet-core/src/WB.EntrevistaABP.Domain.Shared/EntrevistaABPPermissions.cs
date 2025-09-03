@@ -2,7 +2,7 @@
 
 public static class EntrevistaABPPermissions
 {
-    public const string GroupName = "Viajes";
+    public const string GroupName = "EntrevistaABP";
     public static class Viajes
     {
         //DEFINIMOS CONSTANTES EN CLASE STATIC ( NO PUEDE SER INSTANCIADA, SIRVE COMO MODULO)

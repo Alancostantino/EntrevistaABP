@@ -8,18 +8,18 @@ public class EntrevistaABPPermissionDefinitionProvider : PermissionDefinitionPro
 {
     public override void Define(IPermissionDefinitionContext context)
     {
-       var group = context.AddGroup(EntrevistaABPPermissions.GroupName); //Registra el grupo de Permisos.
+        // Evita duplicados si otro provider ya creó el grupo
+        var group = context.GetGroupOrNull(EntrevistaABPPermissions.GroupName)
+                   ?? context.AddGroup(EntrevistaABPPermissions.GroupName, L("Permission:EntrevistaABP"));
 
-    //Agrega permisos y definirlo en el sistema (en memoria)
-        group.AddPermission(EntrevistaABPPermissions.Viajes.Default);
-        group.AddPermission(EntrevistaABPPermissions.Viajes.Create);
-        group.AddPermission(EntrevistaABPPermissions.Viajes.Update);
-        group.AddPermission(EntrevistaABPPermissions.Viajes.Delete);
-        group.AddPermission(EntrevistaABPPermissions.Viajes.ManagePassengers);
+        // Cuelga los permisos como árbol, con display names localizables
+        var viajes = group.AddPermission(EntrevistaABPPermissions.Viajes.Default, L("Permission:Viajes"));
+        viajes.AddChild(EntrevistaABPPermissions.Viajes.Create, L("Permission:Create"));
+        viajes.AddChild(EntrevistaABPPermissions.Viajes.Update, L("Permission:Update"));
+        viajes.AddChild(EntrevistaABPPermissions.Viajes.Delete, L("Permission:Delete"));
+        viajes.AddChild(EntrevistaABPPermissions.Viajes.ManagePassengers, L("Permission:ManagePassengers"));
     }
 
     private static LocalizableString L(string name)
-    {
-        return LocalizableString.Create<EntrevistaABPResource>(name);
-    }
+        => LocalizableString.Create<EntrevistaABPResource>(name);
 }
