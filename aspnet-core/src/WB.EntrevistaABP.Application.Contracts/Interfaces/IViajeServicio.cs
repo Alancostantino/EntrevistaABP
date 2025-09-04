@@ -12,5 +12,7 @@ namespace WB.EntrevistaABP.Application.Contracts.Interfaces
         Task<PagedResultDto<ViajeDto>> GetListAsync(GetViajesDto input);
         Task DeleteAsync(Guid id);
         Task<ViajeDto> UpdateAsync(UpdateViajeDto input);
+        Task<ViajeDto> AsignarPasajeroAsync(Guid viajeId, AsignarPasajeroDto input);
+        Task<ViajeDto> CambiarCoordinadorAsync(Guid viajeId, CambiarCoordinadorDto input);
     }
 }

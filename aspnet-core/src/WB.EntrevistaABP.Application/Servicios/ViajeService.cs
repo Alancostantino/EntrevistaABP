@@ -38,6 +38,8 @@ namespace WB.EntrevistaABP.Application.Servicios
             _guid = guid;
         }
 
+
+
         [Authorize(EntrevistaABPPermissions.Viajes.Create)]
         public async Task<ViajeDto> CreateAsync(CrearViajeDto input)
         {
@@ -124,6 +126,12 @@ namespace WB.EntrevistaABP.Application.Servicios
         }
 
 
+
+
+
+
+
+
         public async Task<PagedResultDto<ViajeDto>> GetListAsync(GetViajesDto input)
         {
             var query = (await _viajeRepo.WithDetailsAsync(
@@ -160,6 +168,14 @@ namespace WB.EntrevistaABP.Application.Servicios
         }
 
 
+
+
+
+
+
+
+
+
         [Authorize(EntrevistaABPPermissions.Viajes.Delete)]
         public async Task DeleteAsync(Guid id)
         {
@@ -178,11 +194,19 @@ namespace WB.EntrevistaABP.Application.Servicios
 
             if (tienePasajeros)
                 throw new BusinessException("Viaje.NoSePuedeEliminarConPasajeros");
-                      
+
 
             // 3) Borrar 
             await _viajeRepo.DeleteAsync(id);
         }
+
+
+
+
+
+
+
+
 
         [Authorize(EntrevistaABPPermissions.Viajes.Update)]
         public async Task<ViajeDto> UpdateAsync(UpdateViajeDto input)
@@ -214,6 +238,162 @@ namespace WB.EntrevistaABP.Application.Servicios
 
             return ObjectMapper.Map<Viaje, ViajeDto>(viaje);
         }
+
+
+
+
+
+
+        [Authorize(EntrevistaABPPermissions.Viajes.ManagePassengers)]
+        public async Task<ViajeDto> AsignarPasajeroAsync(Guid viajeId, AsignarPasajeroDto input)
+        {
+            // Validaciones
+            var usaId = input.PasajeroId.HasValue;
+            var usaNuevo = input.PasajeroNuevo != null;
+            if (usaId == usaNuevo)
+                throw new BusinessException("DebeIndicarPasajeroExistenteOPasajeroNuevo");
+
+            // Traer el viaje con detalles 
+            var qViajes = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
+            var viaje = await AsyncExecuter.FirstOrDefaultAsync(qViajes.Where(v => v.Id == viajeId));
+            if (viaje == null)
+                throw new EntityNotFoundException(typeof(Viaje), viajeId);
+
+            //  Resolver pasajero (existente o crear)
+            Pasajero pasajero;
+
+            if (usaId)
+            {
+                pasajero = await _pasajeroRepo.GetAsync(input.PasajeroId!.Value);
+            }
+            else
+            {
+                var nuevo = input.PasajeroNuevo!;
+                // VERIFICAMOS SI EXISTE POR DNI
+                pasajero = await _pasajeroRepo.FirstOrDefaultAsync(p => p.DNI == nuevo.DNI);
+                if (pasajero == null)
+                {
+                    // ¿existe IdentityUser con userName = DNI?
+                    var userName = nuevo.DNI.ToString();
+                    var user = await _userManager.FindByNameAsync(userName);
+                    if (user == null)
+                    {
+                        var email = $"{userName}@demo.local";
+                        user = new IdentityUser(_guid.Create(), userName, email, CurrentTenant.Id);
+                        (await _userManager.CreateAsync(user, "1q2w3E*")).CheckErrors();
+                        (await _userManager.AddToRoleAsync(user, "client")).CheckErrors();
+                    }
+
+                    pasajero = new Pasajero(_guid.Create())
+                    {
+                        Nombre = nuevo.Nombre,
+                        Apellido = nuevo.Apellido,
+                        DNI = nuevo.DNI,
+                        FechaNacimiento = nuevo.FechaNacimiento,
+                        UserId = user.Id
+                    };
+
+                    await _pasajeroRepo.InsertAsync(pasajero, autoSave: true);
+                }
+            }
+
+            //Evitar duplicado en la N:N
+            if (viaje.Pasajeros.Any(p => p.Id == pasajero.Id))
+                throw new BusinessException("PasajeroYaAsignado");
+
+            // impedir que el coordinador sea agregado como pasajero
+            if (viaje.CoordinadorId == pasajero.Id)
+                throw new BusinessException("ElCoordinadorYaEstaAsignadoComoTal");
+
+            // Agregar y guardar
+            viaje.Pasajeros.Add(pasajero);
+            await _viajeRepo.UpdateAsync(viaje, autoSave: true);
+
+            // Recargar con detalles para devolver DTO completo
+            var qRefresco = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
+            var actualizado = await AsyncExecuter.FirstOrDefaultAsync(qRefresco.Where(v => v.Id == viajeId));
+
+            return ObjectMapper.Map<Viaje, ViajeDto>(actualizado ?? viaje);
+        }
+
+
+
+
+
+
+        [Authorize(EntrevistaABPPermissions.Viajes.ManagePassengers)]
+        public async Task<ViajeDto> CambiarCoordinadorAsync(Guid viajeId, CambiarCoordinadorDto input)
+        {
+            // Validaciones de entrada 
+            var usaId = input.PasajeroId.HasValue;
+            var usaNuevo = input.PasajeroNuevo != null;
+            if (usaId == usaNuevo)
+                throw new BusinessException("DebeIndicarCoordinadorExistenteONuevo");
+
+            // Traer el viaje con detalles
+            var q = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
+            var viaje = await AsyncExecuter.FirstOrDefaultAsync(q.Where(v => v.Id == viajeId));
+            if (viaje == null)
+                throw new EntityNotFoundException(typeof(Viaje), viajeId);
+
+            // Resolver el nuevo coordinador
+            Pasajero nuevoCoor;
+            if (usaId)
+            {
+                nuevoCoor = await _pasajeroRepo.GetAsync(input.PasajeroId!.Value);
+            }
+            else
+            {
+                var dto = input.PasajeroNuevo!;
+                nuevoCoor = await _pasajeroRepo.FirstOrDefaultAsync(p => p.DNI == dto.DNI);
+                if (nuevoCoor == null)
+                {
+                    var userName = dto.DNI.ToString();
+                    var user = await _userManager.FindByNameAsync(userName);
+                    if (user == null)
+                    {
+                        var email = $"{userName}@demo.local";
+                        user = new IdentityUser(_guid.Create(), userName, email, CurrentTenant.Id);
+                        (await _userManager.CreateAsync(user, "1q2w3E*")).CheckErrors();
+                        (await _userManager.AddToRoleAsync(user, "client")).CheckErrors();
+                    }
+
+                    nuevoCoor = new Pasajero(_guid.Create())
+                    {
+                        Nombre = dto.Nombre,
+                        Apellido = dto.Apellido,
+                        DNI = dto.DNI,
+                        FechaNacimiento = dto.FechaNacimiento,
+                        UserId = user.Id
+                    };
+                    await _pasajeroRepo.InsertAsync(nuevoCoor, autoSave: true);
+                }
+            }
+
+            // Si el nuevo coordinador estaba como pasajero, lo quitamos de la lista
+            var yaEstaComoPasajero = viaje.Pasajeros.FirstOrDefault(p => p.Id == nuevoCoor.Id);
+            if (yaEstaComoPasajero != null)
+                viaje.Pasajeros.Remove(yaEstaComoPasajero);
+
+            // Cambiar coordinador
+            viaje.CoordinadorId = nuevoCoor.Id;
+            viaje.Coordinador = nuevoCoor;
+
+            await _viajeRepo.UpdateAsync(viaje, autoSave: true);
+
+            // Refrescar con detalles para mapear DTO completo
+            var qRefresco = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
+            var actualizado = await AsyncExecuter.FirstOrDefaultAsync(qRefresco.Where(v => v.Id == viajeId));
+            return ObjectMapper.Map<Viaje, ViajeDto>(actualizado ?? viaje);
+        }
+
+
+
+
+
+
+
+
 
 
     }
