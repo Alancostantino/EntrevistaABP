@@ -1,8 +1,15 @@
 {
-  "culture": "es",
-  "texts": {
-    "Menu:Home": "Inicio",
-    "Welcome": "Bienvenido",
-    "LongWelcomeMessage": "Bienvenido a la aplicación, este es un proyecto base basado en el framework ABP. Para más información, visita abp.io."
-  }
+    "culture": "es",
+    "texts": {
+        "Menu:Home": "Inicio",
+        "Welcome": "Bienvenido",
+        "LongWelcomeMessage": "Bienvenido a la aplicación, este es un proyecto base basado en el framework ABP. Para más información, visita abp.io.",
+        "Menu:Viajes": "Viajes",
+        "Permission:EntrevistaABP": "Entrevista ABP",
+        "Permission:Viajes": "Viajes",
+        "Permission:Create": "Crear",
+        "Permission:Update": "Actualizar",
+        "Permission:Delete": "Eliminar",
+        "Permission:ManagePassengers": "Gestionar pasajeros"
+    }
 }
