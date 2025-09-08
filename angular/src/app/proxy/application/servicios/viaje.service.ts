@@ -1,8 +1,7 @@
 import { RestService, Rest } from '@abp/ng.core';
 import type { PagedResultDto } from '@abp/ng.core';
 import { Injectable } from '@angular/core';
-import type { AsignarPasajeroDto, CambiarCoordinadorDto, CrearViajeDto, UpdateViajeDto, ViajeDto } from '../contracts/dtos/models';
-import type { GetViajesDto } from '../contracts/interfaces/models';
+import type { AsignarPasajeroDto, CambiarCoordinadorDto, CrearViajeDto, GetViajesDto, UpdateViajeDto, ViajeDto } from '../contracts/dtos/models';
 
 @Injectable({
   providedIn: 'root',

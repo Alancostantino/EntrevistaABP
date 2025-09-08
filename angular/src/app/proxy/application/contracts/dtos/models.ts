@@ -1,4 +1,5 @@
 import type { MedioDeTransporte } from '../../../domain/shared/enums/medio-de-transporte.enum';
+import type { PagedAndSortedResultRequestDto } from '@abp/ng.core';
 
 export interface AsignarPasajeroDto {
   pasajeroId?: string;
@@ -18,6 +19,11 @@ export interface CrearViajeDto {
   medioDeTransporte: MedioDeTransporte;
   coordinadorId?: string;
   coordinadorNuevo: PasajeroDto;
+}
+
+export interface GetViajesDto extends PagedAndSortedResultRequestDto {
+  fechaSalidaDesde?: string;
+  fechaSalidaHasta?: string;
 }
 
 export interface PasajeroDto {

@@ -1,1 +1,107 @@
-<p>viajes works!</p>
+<div class="card">
+  <div class="card-header">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h5 class="card-title">{{ '::Menu:Viajes' | abpLocalization }}</h5>
+      </div>
+      <!-- Botón crear se agregará en el próximo paso (CRUD) con permisos) -->
+    </div>
+
+    <!-- Filtros -->
+    <form [formGroup]="filtroForm" class="row g-2 mt-3">
+      <div class="col-md-4">
+        <label class="form-label">{{ '::RangoFechas' | abpLocalization }}</label>
+        <div class="d-flex gap-2">
+          <input
+            class="form-control"
+            placeholder="Desde"
+            formControlName="fechaDesde"
+            ngbDatepicker
+            #d1="ngbDatepicker"
+            (click)="d1.toggle()"
+          />
+          <input
+            class="form-control"
+            placeholder="Hasta"
+            formControlName="fechaHasta"
+            ngbDatepicker
+            #d2="ngbDatepicker"
+            (click)="d2.toggle()"
+          />
+        </div>
+      </div>
+      <div class="col-md-4 d-flex align-items-end gap-2">
+        <button type="button" class="btn btn-outline-primary" (click)="aplicarFiltros()">
+          Aplicar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body">
+    <ngx-datatable
+      [rows]="viajes.items"
+      [count]="viajes.totalCount"
+      [list]="list"
+      [columnMode]="'force'"
+      [headerHeight]="48"
+      [footerHeight]="56"
+      [rowHeight]="'auto'"
+      (sort)="onSort($event)"
+      default
+    >
+      <ngx-datatable-column
+        [name]="'::Origen' | abpLocalization"
+        prop="origen"
+        [sortable]="true"
+      ></ngx-datatable-column>
+      <ngx-datatable-column
+        [name]="'::Destino' | abpLocalization"
+        prop="destino"
+        [sortable]="true"
+      ></ngx-datatable-column>
+
+      <ngx-datatable-column
+        [name]="'::Salida' | abpLocalization"
+        prop="fechaSalida"
+        [sortable]="true"
+      >
+        <ng-template let-row="row" ngx-datatable-cell-template>
+          {{ row.fechaSalida | date : 'short' }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column
+        [name]="'::Llegada' | abpLocalization"
+        prop="fechaLlegada"
+        [sortable]="true"
+      >
+        <ng-template let-row="row" ngx-datatable-cell-template>
+          {{ row.fechaLlegada | date : 'short' }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column
+        [name]="'::Medio' | abpLocalization"
+        prop="medioDeTransporte"
+        [sortable]="true"
+      >
+        <ng-template let-row="row" ngx-datatable-cell-template>
+          {{ enumLabel(row.medioDeTransporte) }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column [name]="'::Coordinador' | abpLocalization">
+        <ng-template let-row="row" ngx-datatable-cell-template>
+          {{
+            (row.coordinador?.nombre || '') +
+              (row.coordinador?.apellido ? ' ' + row.coordinador.apellido : '') || '-'
+          }}
+        </ng-template>
+      </ngx-datatable-column>
+    </ngx-datatable>
+  </div>
+</div>

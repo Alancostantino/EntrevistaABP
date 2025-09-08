@@ -15,14 +15,14 @@ function configureRoutes(routesService: RoutesService) {
         order: 1,
         layout: eLayoutType.application,
       },
-      // 👇 NUEVO: menú Viajes (visible solo si el usuario tiene el permiso)
+      // menú Viajes (visible solo si el usuario tiene el permiso)
       {
         path: '/viajes',
         name: '::Menu:Viajes',
-        iconClass: 'fas fa-plane',          // podés cambiar el ícono
+        iconClass: 'fas fa-plane',          
         order: 2,
         layout: eLayoutType.application,
-        requiredPolicy: 'EntrevistaABP.Viajes', // == Viajes.Default
+        requiredPolicy: 'EntrevistaABP.Viajes', 
       },
     ]);
   };
