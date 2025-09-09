@@ -1,11 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, TemplateRef } from '@angular/core';
 import { ListService, PagedResultDto } from '@abp/ng.core';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { NgbDateAdapter, NgbDateNativeAdapter } from '@ng-bootstrap/ng-bootstrap';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  NgbDateAdapter,
+  NgbDateNativeAdapter,
+  NgbModal,
+  NgbModalRef,
+} from '@ng-bootstrap/ng-bootstrap';
 import { MedioDeTransporte as MedioEnum } from '@proxy/domain/shared/enums/medio-de-transporte.enum';
 // Importá del proxy generado por ABP (rutas reales según tu CLI)
 import { ViajeService } from '@proxy/application/servicios';
 import { ViajeDto, GetViajesDto } from '@proxy/application/contracts/dtos';
+import { ToasterService } from '@abp/ng.theme.shared';
+
+
+
 
 @Component({
   selector: 'app-viajes',
@@ -13,21 +22,27 @@ import { ViajeDto, GetViajesDto } from '@proxy/application/contracts/dtos';
   providers: [ListService, { provide: NgbDateAdapter, useClass: NgbDateNativeAdapter }],
 })
 export class ViajesComponent implements OnInit {
-  readonly MedioEnum = MedioEnum;
-  viajes = { items: [], totalCount: 0 } as PagedResultDto<ViajeDto>;
+  viajes = { items: [], totalCount: 0 } as PagedResultDto<ViajeDto>; //Iterable de tabla
 
-  filtroForm: FormGroup;
- private readonly asEnum: any = MedioEnum || {};;
+  readonly MedioEnum = MedioEnum;
+  private readonly asEnum: any = MedioEnum || {};
+  mediosOpts: Array<{ label: string; value: number }> = [];
+
+  private modalRef?: NgbModalRef;
+
+  crearForm!: FormGroup; //Form del modal creear
+  filtroForm: FormGroup; //Form de filtros
 
   constructor(
     public readonly list: ListService,
     private viajeService: ViajeService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private modal: NgbModal,
+    private toaster: ToasterService
   ) {}
 
   ngOnInit(): void {
-
-    // Formulario de filtro (por ahora: rango de salida + sorting)
+    // Formulario de filtro (rango de salida + sorting)
 
     this.filtroForm = this.fb.group({
       fechaDesde: [null],
@@ -35,9 +50,34 @@ export class ViajesComponent implements OnInit {
       sorting: ['FechaSalida DESC'],
     });
 
+    //Opciones del enum para usar "select"
+
+    this.mediosOpts = Object.keys(this.asEnum)
+      .filter(k => !isNaN(Number(k))) // solo claves numéricas (0,1,2,3)
+      .map(k => {
+        const nombre = this.asEnum[k]; // Avion, Tren, ...
+        return { label: this.enumLabel(nombre), value: Number(k) };
+      });
+
+    //Form del modal Crear Viaje
+
+    this.crearForm = this.fb.group({
+      fechaSalida: [null, Validators.required],
+      fechaLlegada: [null, Validators.required],
+      origen: ['', Validators.required],
+      destino: ['', Validators.required],
+      medioDeTransporte: [null, Validators.required],
+      coordinadorNuevo: this.fb.group({
+        nombre: ['', Validators.required],
+        apellido: ['', Validators.required],
+        dni: [null, Validators.required],
+        fechaNacimiento: [null, Validators.required],
+      }),
+    });
+
     //Carga de datos
 
-    const stream = (query) => {
+    const stream = query => {
       //Armamos el dto q necesita getviajes
       const input: GetViajesDto = this.toGetInput(query);
       return this.viajeService.getList(input);
@@ -70,15 +110,15 @@ export class ViajesComponent implements OnInit {
   onSort(event: any) {
     const sort = event?.sorts?.[0];
     if (!sort) return;
-    const dir = (sort.dir || 'asc').toUpperCase(); // 'ASC' | 'DESC'
+    const dir = (sort.dir || 'asc').toUpperCase(); // ASC  DESC
     this.filtroForm.patchValue({ sorting: `${sort.prop} ${dir}` });
     this.list.get();
   }
 
-  //Probar el enum 
+  //Probar el enum
   enumLabel(value: unknown): string {
     if (value === null || value === undefined) return '-';
-    const name = typeof value === 'number' ? this.asEnum[value as any] : value; // Avion | "Avion"
+    const name = typeof value === 'number' ? this.asEnum[value as any] : value;
     const labels: Record<string, string> = {
       Avion: 'Avión',
       Tren: 'Tren',
@@ -88,4 +128,62 @@ export class ViajesComponent implements OnInit {
     const key = String(name);
     return labels[key] ?? key ?? '-';
   }
+
+  //CREAR MODAL
+  openCrearModal(tpl: TemplateRef<any>) {
+  this.modalRef = this.modal.open(tpl, { centered: true, backdrop: 'static' });
+}
+
+  onCrear() {
+  if (this.crearForm.invalid) {
+    this.crearForm.markAllAsTouched();
+    return;
+  }
+
+  const v = this.crearForm.value;
+  const toIso = (x: string | null) => (x ? new Date(x).toISOString() : null);
+
+  const dto = {
+    fechaSalida: toIso(v.fechaSalida)!,
+    fechaLlegada: toIso(v.fechaLlegada)!,
+    origen: v.origen,
+    destino: v.destino,
+    medioDeTransporte: v.medioDeTransporte, // número del enum
+    coordinadorNuevo: {
+      nombre: v.coordinadorNuevo?.nombre,
+      apellido: v.coordinadorNuevo?.apellido,
+      dni: Number(v.coordinadorNuevo?.dni),
+      fechaNacimiento: toIso(v.coordinadorNuevo?.fechaNacimiento)!,
+    },
+  };
+
+  this.viajeService.create(dto).subscribe({
+    next: () => {
+      this.toaster.success('Viaje creado correctamente.');
+      this.modalRef?.close();
+      this.crearForm.reset();
+      this.list.get(); // refresca tabla
+    },
+    error: (e) => {
+      const code = e?.error?.error?.code || '';
+      const msg =
+        e?.error?.error?.message ||
+        'No se pudo crear el viaje. Revisá los datos e intentá nuevamente.';
+
+      const map: Record<string, string> = {
+        FechaLlegadaDebeSerMayorQueSalida: 'La fecha de llegada debe ser mayor que la de salida.',
+        OrigenYDestinoNoPuedenSerIguales: 'Origen y destino no pueden ser iguales.',
+        DebeIndicarCoordinadorExistenteOCoordinadorNuevo:
+          'Debés indicar un coordinador (existente o nuevo).',
+      };
+
+      this.toaster.error(map[code] ?? msg);
+      console.error('Create error', e);
+    },
+  });
+}
+
+closeModal()  { this.modalRef?.close(); }
+dismissModal(){ this.modalRef?.dismiss(); }
+  
 }
