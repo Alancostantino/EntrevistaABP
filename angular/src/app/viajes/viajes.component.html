@@ -9,7 +9,7 @@
         <button
           class="btn btn-primary"
           *abpPermission="'EntrevistaABP.Viajes.Create'"
-          (click)="openCrearModal(crearModal)"
+          (click)="openCrearModal()"
         >
           {{ '::Nuevo Viaje' | abpLocalization }}
         </button>
@@ -49,14 +49,15 @@
     </form>
   </div>
 
-  <ng-template #crearModal>
-    <div class="modal-header">
-      <h5 class="modal-title">{{ '::Crear Viaje' | abpLocalization }}</h5>
-      <button type="button" class="btn-close" aria-label="Close" (click)="dismissModal()"></button>
-    </div>
+  <!-- MODAL ABP SOLO PARA EL FORM -->
+  <abp-modal [(visible)]="isCrearOpen" [busy]="saving" size="lg">
+    <ng-template #abpHeader>
+      <h3>{{ '::Crear Viaje' | abpLocalization }}</h3>
+    </ng-template>
 
-    <form [formGroup]="crearForm" (ngSubmit)="onCrear()">
-      <div class="modal-body">
+    <ng-template #abpBody>
+      <!-- Sin .modal-body -->
+      <form [formGroup]="crearForm">
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">{{ '::Salida' | abpLocalization }}</label>
@@ -107,21 +108,23 @@
               </div>
             </div>
           </div>
-
         </div>
-      </div>
+      </form>
+    </ng-template>
 
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" (click)="dismissModal()">
-          {{ '::Cancelar' | abpLocalization }}
-        </button>
-        <button type="submit" class="btn btn-primary" [disabled]="crearForm.invalid">
-          {{ '::Guardar' | abpLocalization }}
-        </button>
-      </div>
-    </form>
-  </ng-template>
+    <ng-template #abpFooter>
+      <!-- Sin .modal-footer -->
+      <button type="button" class="btn btn-outline-secondary" abpClose>
+        {{ '::Cancelar' | abpLocalization }}
+      </button>
+      <!-- Botón fuera del <form>: usa (click) -->
+      <button type="button" class="btn btn-primary" (click)="onCrear()" [disabled]="crearForm.invalid || saving">
+        {{ '::Guardar' | abpLocalization }}
+      </button>
+    </ng-template>
+  </abp-modal>
 
+  <!-- TABLA: FUERA DEL MODAL -->
   <div class="card-body">
     <ngx-datatable
       [rows]="viajes.items"
@@ -134,42 +137,22 @@
       (sort)="onSort($event)"
       default
     >
-      <ngx-datatable-column
-        [name]="'::Origen' | abpLocalization"
-        prop="origen"
-        [sortable]="true"
-      ></ngx-datatable-column>
-      <ngx-datatable-column
-        [name]="'::Destino' | abpLocalization"
-        prop="destino"
-        [sortable]="true"
-      ></ngx-datatable-column>
+      <ngx-datatable-column [name]="'::Origen' | abpLocalization" prop="origen" [sortable]="true"></ngx-datatable-column>
+      <ngx-datatable-column [name]="'::Destino' | abpLocalization" prop="destino" [sortable]="true"></ngx-datatable-column>
 
-      <ngx-datatable-column
-        [name]="'::Salida' | abpLocalization"
-        prop="fechaSalida"
-        [sortable]="true"
-      >
+      <ngx-datatable-column [name]="'::Salida' | abpLocalization" prop="fechaSalida" [sortable]="true">
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ row.fechaSalida | date : 'short' }}
         </ng-template>
       </ngx-datatable-column>
 
-      <ngx-datatable-column
-        [name]="'::Llegada' | abpLocalization"
-        prop="fechaLlegada"
-        [sortable]="true"
-      >
+      <ngx-datatable-column [name]="'::Llegada' | abpLocalization" prop="fechaLlegada" [sortable]="true">
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ row.fechaLlegada | date : 'short' }}
         </ng-template>
       </ngx-datatable-column>
 
-      <ngx-datatable-column
-        [name]="'::Transporte' | abpLocalization"
-        prop="medioDeTransporte"
-        [sortable]="true"
-      >
+      <ngx-datatable-column [name]="'::Transporte' | abpLocalization" prop="medioDeTransporte" [sortable]="true">
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ enumLabel(row.medioDeTransporte) }}
         </ng-template>

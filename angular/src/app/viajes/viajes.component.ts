@@ -3,15 +3,14 @@ import { ListService, PagedResultDto } from '@abp/ng.core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import {
   NgbDateAdapter,
-  NgbDateNativeAdapter,
-  NgbModal,
-  NgbModalRef,
+  NgbDateNativeAdapter
 } from '@ng-bootstrap/ng-bootstrap';
 import { MedioDeTransporte as MedioEnum } from '@proxy/domain/shared/enums/medio-de-transporte.enum';
 // Importá del proxy generado por ABP (rutas reales según tu CLI)
 import { ViajeService } from '@proxy/application/servicios';
 import { ViajeDto, GetViajesDto } from '@proxy/application/contracts/dtos';
 import { ToasterService } from '@abp/ng.theme.shared';
+import { finalize } from 'rxjs/operators';
 
 
 
@@ -28,7 +27,8 @@ export class ViajesComponent implements OnInit {
   private readonly asEnum: any = MedioEnum || {};
   mediosOpts: Array<{ label: string; value: number }> = [];
 
-  private modalRef?: NgbModalRef;
+   isCrearOpen = false;
+   saving = false;
 
   crearForm!: FormGroup; //Form del modal creear
   filtroForm: FormGroup; //Form de filtros
@@ -37,7 +37,6 @@ export class ViajesComponent implements OnInit {
     public readonly list: ListService,
     private viajeService: ViajeService,
     private fb: FormBuilder,
-    private modal: NgbModal,
     private toaster: ToasterService
   ) {}
 
@@ -130,60 +129,61 @@ export class ViajesComponent implements OnInit {
   }
 
   //CREAR MODAL
-  openCrearModal(tpl: TemplateRef<any>) {
-  this.modalRef = this.modal.open(tpl, { centered: true, backdrop: 'static' });
-}
-
-  onCrear() {
-  if (this.crearForm.invalid) {
-    this.crearForm.markAllAsTouched();
-    return;
+  openCrearModal() {
+    this.isCrearOpen = true;
   }
 
-  const v = this.crearForm.value;
-  const toIso = (x: string | null) => (x ? new Date(x).toISOString() : null);
+  onCrear() {
+    if (this.crearForm.invalid) {
+      this.crearForm.markAllAsTouched();
+      return;
+    }
 
-  const dto = {
-    fechaSalida: toIso(v.fechaSalida)!,
-    fechaLlegada: toIso(v.fechaLlegada)!,
-    origen: v.origen,
-    destino: v.destino,
-    medioDeTransporte: v.medioDeTransporte, // número del enum
-    coordinadorNuevo: {
-      nombre: v.coordinadorNuevo?.nombre,
-      apellido: v.coordinadorNuevo?.apellido,
-      dni: Number(v.coordinadorNuevo?.dni),
-      fechaNacimiento: toIso(v.coordinadorNuevo?.fechaNacimiento)!,
-    },
-  };
+    const v = this.crearForm.value;
+    const toIso = (x: string | null) => (x ? new Date(x).toISOString() : null);
 
-  this.viajeService.create(dto).subscribe({
-    next: () => {
-      this.toaster.success('Viaje creado correctamente.');
-      this.modalRef?.close();
-      this.crearForm.reset();
-      this.list.get(); // refresca tabla
-    },
-    error: (e) => {
-      const code = e?.error?.error?.code || '';
-      const msg =
-        e?.error?.error?.message ||
-        'No se pudo crear el viaje. Revisá los datos e intentá nuevamente.';
+    const dto = {
+      fechaSalida: toIso(v.fechaSalida)!,
+      fechaLlegada: toIso(v.fechaLlegada)!,
+      origen: v.origen,
+      destino: v.destino,
+      medioDeTransporte: v.medioDeTransporte,
+      coordinadorNuevo: {
+        nombre: v.coordinadorNuevo?.nombre,
+        apellido: v.coordinadorNuevo?.apellido,
+        dni: Number(v.coordinadorNuevo?.dni),
+        fechaNacimiento: toIso(v.coordinadorNuevo?.fechaNacimiento)!,
+      },
+    };
 
-      const map: Record<string, string> = {
-        FechaLlegadaDebeSerMayorQueSalida: 'La fecha de llegada debe ser mayor que la de salida.',
-        OrigenYDestinoNoPuedenSerIguales: 'Origen y destino no pueden ser iguales.',
-        DebeIndicarCoordinadorExistenteOCoordinadorNuevo:
-          'Debés indicar un coordinador (existente o nuevo).',
-      };
+    this.saving = true;
+    this.viajeService.create(dto)
+      .pipe(finalize(() => (this.saving = false)))
+      .subscribe({
+        next: () => {
+          this.toaster.success('Viaje creado correctamente.');
+          this.isCrearOpen = false;
+          this.crearForm.reset();
+          this.list.get();
+        },
+        error: e => {
+          const code = e?.error?.error?.code || '';
+          const msg =
+            e?.error?.error?.message ||
+            'No se pudo crear el viaje. Revisá los datos e intentá nuevamente.';
+          const map: Record<string, string> = {
+            FechaLlegadaDebeSerMayorQueSalida:
+              'La fecha de llegada debe ser mayor que la de salida.',
+            OrigenYDestinoNoPuedenSerIguales:
+              'Origen y destino no pueden ser iguales.',
+            DebeIndicarCoordinadorExistenteOCoordinadorNuevo:
+              'Debés indicar un coordinador (existente o nuevo).',
+          };
+          this.toaster.error(map[code] ?? msg);
+          console.error('Create error', e);
+        },
+      });
+  }
 
-      this.toaster.error(map[code] ?? msg);
-      console.error('Create error', e);
-    },
-  });
-}
-
-closeModal()  { this.modalRef?.close(); }
-dismissModal(){ this.modalRef?.dismiss(); }
   
 }
