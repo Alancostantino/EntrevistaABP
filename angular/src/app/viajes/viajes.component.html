@@ -7,17 +7,18 @@
 
       <div class="col-auto">
         <button
-          class="btn btn-primary"
+          class="btn btn-success d-flex align-items-center gap-2"
           *abpPermission="'EntrevistaABP.Viajes.Create'"
           (click)="openCrearModal()"
         >
-          {{ '::Nuevo Viaje' | abpLocalization }}
+          <i class="fa fa-plus"></i>
+          <span class="d-none d-sm-inline">{{ '::Nuevo Viaje' | abpLocalization }}</span>
         </button>
       </div>
     </div>
 
     <form [formGroup]="filtroForm" class="row g-2 mt-3">
-      <div class="col-md-4">
+      <div class=" col-12 col-md-4">
         <label class="form-label">{{ '::Filtrar por fecha' | abpLocalization }}</label>
         <div class="d-flex gap-2">
           <input
@@ -38,7 +39,8 @@
           />
         </div>
       </div>
-      <div class="col-md-4 d-flex align-items-end gap-2">
+
+      <div class=" col-12 col-md-4 d-flex align-items-end gap-2">
         <button type="button" class="btn btn-outline-primary" (click)="aplicarFiltros()">
           Aplicar
         </button>
@@ -49,20 +51,22 @@
     </form>
   </div>
 
-  <!-- MODAL ABP SOLO PARA EL FORM -->
-  <abp-modal [(visible)]="isCrearOpen" [busy]="saving" size="lg">
+  <abp-modal [(visible)]="isModalOpen" [busy]="saving" size="lg">
     <ng-template #abpHeader>
-      <h3>{{ '::Crear Viaje' | abpLocalization }}</h3>
+      <h3 class="modal-title m-0 d-flex align-items-center gap-2">
+        <i class="fa" [ngClass]="formMode === 'create' ? 'fa-plus-circle' : 'fa-edit'"></i>
+        {{ (formMode === 'create' ? '::Crear Viaje' : '::Editar Viaje') | abpLocalization }}
+      </h3>
     </ng-template>
 
     <ng-template #abpBody>
-      <!-- Sin .modal-body -->
       <form [formGroup]="crearForm">
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">{{ '::Salida' | abpLocalization }}</label>
             <input type="datetime-local" class="form-control" formControlName="fechaSalida" />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">{{ '::Llegada' | abpLocalization }}</label>
             <input type="datetime-local" class="form-control" formControlName="fechaLlegada" />
@@ -72,6 +76,7 @@
             <label class="form-label">{{ '::Origen' | abpLocalization }}</label>
             <input type="text" class="form-control" formControlName="origen" />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">{{ '::Destino' | abpLocalization }}</label>
             <input type="text" class="form-control" formControlName="destino" />
@@ -85,7 +90,7 @@
             </select>
           </div>
 
-          <div class="col-12">
+          <div class="col-12" *ngIf="formMode === 'create'">
             <hr />
             <h6 class="mb-2">{{ '::Coordinador' | abpLocalization }}</h6>
 
@@ -94,14 +99,17 @@
                 <label class="form-label">{{ '::Nombre' | abpLocalization }}</label>
                 <input type="text" class="form-control" formControlName="nombre" />
               </div>
+
               <div class="col-md-6">
                 <label class="form-label">{{ '::Apellido' | abpLocalization }}</label>
                 <input type="text" class="form-control" formControlName="apellido" />
               </div>
+
               <div class="col-md-6">
                 <label class="form-label">DNI</label>
                 <input type="number" class="form-control" formControlName="dni" />
               </div>
+
               <div class="col-md-6">
                 <label class="form-label">{{ '::Fecha de nacimiento' | abpLocalization }}</label>
                 <input type="date" class="form-control" formControlName="fechaNacimiento" />
@@ -113,18 +121,21 @@
     </ng-template>
 
     <ng-template #abpFooter>
-      <!-- Sin .modal-footer -->
       <button type="button" class="btn btn-outline-secondary" abpClose>
         {{ '::Cancelar' | abpLocalization }}
       </button>
-      <!-- Botón fuera del <form>: usa (click) -->
-      <button type="button" class="btn btn-primary" (click)="onCrear()" [disabled]="crearForm.invalid || saving">
-        {{ '::Guardar' | abpLocalization }}
+
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="guardar()"
+        [disabled]="crearForm.invalid || saving"
+      >
+        {{ (formMode === 'create' ? '::Guardar' : '::Actualizar') | abpLocalization }}
       </button>
     </ng-template>
   </abp-modal>
 
-  <!-- TABLA: FUERA DEL MODAL -->
   <div class="card-body">
     <ngx-datatable
       [rows]="viajes.items"
@@ -137,22 +148,42 @@
       (sort)="onSort($event)"
       default
     >
-      <ngx-datatable-column [name]="'::Origen' | abpLocalization" prop="origen" [sortable]="true"></ngx-datatable-column>
-      <ngx-datatable-column [name]="'::Destino' | abpLocalization" prop="destino" [sortable]="true"></ngx-datatable-column>
+      <ngx-datatable-column
+        [name]="'::Origen' | abpLocalization"
+        prop="origen"
+        [sortable]="true"
+      ></ngx-datatable-column>
+      <ngx-datatable-column
+        [name]="'::Destino' | abpLocalization"
+        prop="destino"
+        [sortable]="true"
+      ></ngx-datatable-column>
 
-      <ngx-datatable-column [name]="'::Salida' | abpLocalization" prop="fechaSalida" [sortable]="true">
+      <ngx-datatable-column
+        [name]="'::Salida' | abpLocalization"
+        prop="fechaSalida"
+        [sortable]="true"
+      >
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ row.fechaSalida | date : 'short' }}
         </ng-template>
       </ngx-datatable-column>
 
-      <ngx-datatable-column [name]="'::Llegada' | abpLocalization" prop="fechaLlegada" [sortable]="true">
+      <ngx-datatable-column
+        [name]="'::Llegada' | abpLocalization"
+        prop="fechaLlegada"
+        [sortable]="true"
+      >
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ row.fechaLlegada | date : 'short' }}
         </ng-template>
       </ngx-datatable-column>
 
-      <ngx-datatable-column [name]="'::Transporte' | abpLocalization" prop="medioDeTransporte" [sortable]="true">
+      <ngx-datatable-column
+        [name]="'::Transporte' | abpLocalization"
+        prop="medioDeTransporte"
+        [sortable]="true"
+      >
         <ng-template let-row="row" ngx-datatable-cell-template>
           {{ enumLabel(row.medioDeTransporte) }}
         </ng-template>
@@ -164,6 +195,33 @@
             (row.coordinador?.nombre || '') +
               (row.coordinador?.apellido ? ' ' + row.coordinador.apellido : '') || '-'
           }}
+        </ng-template>
+      </ngx-datatable-column>
+
+      <ngx-datatable-column
+        [name]="'::Acciones' | abpLocalization"
+        [maxWidth]="210"
+        [sortable]="false"
+      >
+        <ng-template let-row="row" ngx-datatable-cell-template>
+          <div class="btn-group btn-group-sm text-nowrap" role="group">
+            <button
+              class="btn btn-outline-primary d-flex align-items-center gap-1"
+              *abpPermission="'EntrevistaABP.Viajes.Update'"
+              (click)="openEdit(row)"
+            >
+              <i class="fa fa-edit"></i>
+              <span class="d-none d-md-inline">{{ '::Editar' | abpLocalization }}</span>
+            </button>
+
+            <button
+              class="btn btn-outline-danger d-flex align-items-center gap-1"
+              *abpPermission="'EntrevistaABP.Viajes.Delete'"
+            >
+              <i class="fa fa-trash"></i>
+              <span class="d-none d-md-inline">{{ '::Eliminar' | abpLocalization }}</span>
+            </button>
+          </div>
         </ng-template>
       </ngx-datatable-column>
     </ngx-datatable>
