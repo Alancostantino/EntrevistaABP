@@ -18,7 +18,7 @@ using Volo.Abp.Domain.Entities;
 
 namespace WB.EntrevistaABP.Application.Servicios
 {
-    [Authorize(EntrevistaABPPermissions.Viajes.Default)]
+
     public class ViajeService : ApplicationService, IViajeServicio
     {
         private readonly IRepository<Viaje, Guid> _viajeRepo;
@@ -131,7 +131,7 @@ namespace WB.EntrevistaABP.Application.Servicios
 
 
 
-
+        [Authorize(EntrevistaABPPermissions.Viajes.Default)]
         public async Task<PagedResultDto<ViajeDto>> GetListAsync(GetViajesDto input)
         {
             var query = (await _viajeRepo.WithDetailsAsync(
@@ -149,6 +149,8 @@ namespace WB.EntrevistaABP.Application.Servicios
                 var userId = CurrentUser.Id.Value;
                 query = query.Where(v => v.Pasajeros.Any(p => p.UserId == userId));
             }
+
+            //creada la query listamos y paginamos 
 
             // Total antes de paginar
             var total = await AsyncExecuter.CountAsync(query);
@@ -248,9 +250,11 @@ namespace WB.EntrevistaABP.Application.Servicios
         public async Task<ViajeDto> AsignarPasajeroAsync(Guid viajeId, AsignarPasajeroDto input)
         {
             // Validaciones
-            var usaId = input.PasajeroId.HasValue;
+            var usaDni = input.DniExistente.HasValue;
             var usaNuevo = input.PasajeroNuevo != null;
-            if (usaId == usaNuevo)
+
+
+            if ((usaDni && usaNuevo) || (!usaDni && !usaNuevo))
                 throw new BusinessException("DebeIndicarPasajeroExistenteOPasajeroNuevo");
 
             // Traer el viaje con detalles 
@@ -262,18 +266,22 @@ namespace WB.EntrevistaABP.Application.Servicios
             //  Resolver pasajero (existente o crear)
             Pasajero pasajero;
 
-            if (usaId)
+            if (usaDni)
             {
-                pasajero = await _pasajeroRepo.GetAsync(input.PasajeroId!.Value);
+                pasajero = await _pasajeroRepo.FirstOrDefaultAsync(p => p.DNI == input.DniExistente!.Value);
+                if (pasajero == null)
+                    throw new BusinessException("PasajeroNoEncontradoPorDni");
             }
             else
             {
+                // Cargar nuevo (si no existe por DNI lo creamos)
                 var nuevo = input.PasajeroNuevo!;
                 // VERIFICAMOS SI EXISTE POR DNI
                 pasajero = await _pasajeroRepo.FirstOrDefaultAsync(p => p.DNI == nuevo.DNI);
                 if (pasajero == null)
                 {
-                    // ¿existe IdentityUser con userName = DNI?
+                    // IdentityUser con userName = DNI
+
                     var userName = nuevo.DNI.ToString();
                     var user = await _userManager.FindByNameAsync(userName);
                     if (user == null)
@@ -297,22 +305,20 @@ namespace WB.EntrevistaABP.Application.Servicios
                 }
             }
 
-            //Evitar duplicado en la N:N
+            // Validaciones de N:N
             if (viaje.Pasajeros.Any(p => p.Id == pasajero.Id))
                 throw new BusinessException("PasajeroYaAsignado");
 
-            // impedir que el coordinador sea agregado como pasajero
             if (viaje.CoordinadorId == pasajero.Id)
                 throw new BusinessException("ElCoordinadorYaEstaAsignadoComoTal");
 
-            // Agregar y guardar
+            // Asignar y guardar
             viaje.Pasajeros.Add(pasajero);
             await _viajeRepo.UpdateAsync(viaje, autoSave: true);
 
-            // Recargar con detalles para devolver DTO completo
+            // Devolver con detalles
             var qRefresco = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
             var actualizado = await AsyncExecuter.FirstOrDefaultAsync(qRefresco.Where(v => v.Id == viajeId));
-
             return ObjectMapper.Map<Viaje, ViajeDto>(actualizado ?? viaje);
         }
 
@@ -324,23 +330,21 @@ namespace WB.EntrevistaABP.Application.Servicios
         [Authorize(EntrevistaABPPermissions.Viajes.ManagePassengers)]
         public async Task<ViajeDto> CambiarCoordinadorAsync(Guid viajeId, CambiarCoordinadorDto input)
         {
-            // Validaciones de entrada 
-            var usaId = input.PasajeroId.HasValue;
+            var usaDni = input.DniExistente.HasValue;
             var usaNuevo = input.PasajeroNuevo != null;
-            if (usaId == usaNuevo)
+            if ((usaDni && usaNuevo) || (!usaDni && !usaNuevo))
                 throw new BusinessException("DebeIndicarCoordinadorExistenteONuevo");
 
-            // Traer el viaje con detalles
             var q = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
-            var viaje = await AsyncExecuter.FirstOrDefaultAsync(q.Where(v => v.Id == viajeId));
-            if (viaje == null)
-                throw new EntityNotFoundException(typeof(Viaje), viajeId);
+            var viaje = await AsyncExecuter.FirstOrDefaultAsync(q.Where(v => v.Id == viajeId))
+                        ?? throw new EntityNotFoundException(typeof(Viaje), viajeId);
 
-            // Resolver el nuevo coordinador
             Pasajero nuevoCoor;
-            if (usaId)
+
+            if (usaDni)
             {
-                nuevoCoor = await _pasajeroRepo.GetAsync(input.PasajeroId!.Value);
+                nuevoCoor = await _pasajeroRepo.FirstOrDefaultAsync(p => p.DNI == input.DniExistente!.Value)
+                             ?? throw new BusinessException("CoordinadorNoEncontradoPorDni");
             }
             else
             {
@@ -370,22 +374,19 @@ namespace WB.EntrevistaABP.Application.Servicios
                 }
             }
 
-            // Si el nuevo coordinador estaba como pasajero, lo quitamos de la lista
-            var yaEstaComoPasajero = viaje.Pasajeros.FirstOrDefault(p => p.Id == nuevoCoor.Id);
-            if (yaEstaComoPasajero != null)
-                viaje.Pasajeros.Remove(yaEstaComoPasajero);
+            var estaba = viaje.Pasajeros.FirstOrDefault(p => p.Id == nuevoCoor.Id);
+            if (estaba != null) viaje.Pasajeros.Remove(estaba);
 
-            // Cambiar coordinador
             viaje.CoordinadorId = nuevoCoor.Id;
             viaje.Coordinador = nuevoCoor;
 
             await _viajeRepo.UpdateAsync(viaje, autoSave: true);
 
-            // Refrescar con detalles para mapear DTO completo
             var qRefresco = await _viajeRepo.WithDetailsAsync(v => v.Coordinador, v => v.Pasajeros);
             var actualizado = await AsyncExecuter.FirstOrDefaultAsync(qRefresco.Where(v => v.Id == viajeId));
             return ObjectMapper.Map<Viaje, ViajeDto>(actualizado ?? viaje);
         }
+
 
 
 

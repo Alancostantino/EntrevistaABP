@@ -2,12 +2,12 @@ import type { MedioDeTransporte } from '../../../domain/shared/enums/medio-de-tr
 import type { PagedAndSortedResultRequestDto } from '@abp/ng.core';
 
 export interface AsignarPasajeroDto {
-  pasajeroId?: string;
+  dniExistente?: number;
   pasajeroNuevo: PasajeroDto;
 }
 
 export interface CambiarCoordinadorDto {
-  pasajeroId?: string;
+  dniExistente?: number;
   pasajeroNuevo: PasajeroDto;
 }
 

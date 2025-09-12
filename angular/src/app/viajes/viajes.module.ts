@@ -4,6 +4,8 @@ import { NgbDatepickerModule } from '@ng-bootstrap/ng-bootstrap';
 import { ViajesRoutingModule } from './viajes-routing.module';
 import { ViajesComponent } from './viajes.component';
 import { SharedModule } from '../shared/shared.module';
+import { PipesModule } from '../shared/pipes/pipes.module';
+
 
 
 @NgModule({
@@ -12,7 +14,7 @@ import { SharedModule } from '../shared/shared.module';
   ],
   imports: [
     CommonModule,
-    ViajesRoutingModule,SharedModule,NgbDatepickerModule
+    ViajesRoutingModule,SharedModule,NgbDatepickerModule,PipesModule,
 
   ]
 })
