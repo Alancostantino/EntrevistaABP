@@ -85,7 +85,9 @@
               <label class="form-label">{{ '::Transporte' | abpLocalization }}</label>
               <select class="form-select" formControlName="medioDeTransporte">
                 <option [ngValue]="null">--</option>
-                <option *ngFor="let m of mediosOpts" [ngValue]="m.value">{{ m.label }}</option>
+                <option *ngFor="let m of mediosOpts" [ngValue]="m.value">
+                  {{ m.label }}
+                </option>
               </select>
             </div>
 

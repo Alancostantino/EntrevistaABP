@@ -138,7 +138,7 @@ namespace WB.EntrevistaABP.Application.Servicios
                 v => v.Coordinador,
                 v => v.Pasajeros));
 
-            // Filtro por rango de fecha de salida
+            
             query = query
                 .WhereIf(input.FechaSalidaDesde.HasValue, v => v.FechaSalida >= input.FechaSalidaDesde!.Value)
                 .WhereIf(input.FechaSalidaHasta.HasValue, v => v.FechaSalida <= input.FechaSalidaHasta!.Value);
@@ -152,10 +152,10 @@ namespace WB.EntrevistaABP.Application.Servicios
 
             //creada la query listamos y paginamos 
 
-            // Total antes de paginar
+            
             var total = await AsyncExecuter.CountAsync(query);
 
-            // Orden 
+           
             var sorting = string.IsNullOrWhiteSpace(input.Sorting) ? "FechaSalida DESC" : input.Sorting;
 
             var pageQuery = query.OrderBy(sorting).PageBy(input.SkipCount, input.MaxResultCount);
@@ -163,7 +163,7 @@ namespace WB.EntrevistaABP.Application.Servicios
             // Paginación + orden
             var list = await AsyncExecuter.ToListAsync(pageQuery);
 
-            // Map a DTO
+            
             var items = list.Select(v => ObjectMapper.Map<Viaje, ViajeDto>(v)).ToList();
 
             return new PagedResultDto<ViajeDto>(total, items);

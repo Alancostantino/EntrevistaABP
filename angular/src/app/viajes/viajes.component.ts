@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ListService, PagedResultDto, PermissionService } from '@abp/ng.core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NgbDateAdapter, NgbDateNativeAdapter } from '@ng-bootstrap/ng-bootstrap';
-import { MedioDeTransporte as MedioEnum } from '@proxy/domain/shared/enums/medio-de-transporte.enum';
+import { medioDeTransporteOptions, MedioDeTransporte as MedioEnum } from '@proxy/domain/shared/enums/medio-de-transporte.enum';
 import { ViajeService } from '@proxy/application/servicios';
 import { ViajeDto, GetViajesDto } from '@proxy/application/contracts/dtos';
 import { ToasterService, ConfirmationService } from '@abp/ng.theme.shared';
@@ -15,6 +15,7 @@ import { SelectionType } from '@swimlane/ngx-datatable';
   providers: [ListService, { provide: NgbDateAdapter, useClass: NgbDateNativeAdapter }],
 })
 export class ViajesComponent implements OnInit {
+
   viajes = { items: [], totalCount: 0 } as PagedResultDto<ViajeDto>;
   canManage = false;
 
@@ -26,6 +27,7 @@ export class ViajesComponent implements OnInit {
   };
 
   readonly MedioEnum = MedioEnum;
+
   mediosOpts: Array<{ label: string; value: number }> = [];
 
   // Modales
@@ -100,19 +102,17 @@ export class ViajesComponent implements OnInit {
     //Validar modo de uso 
 
     this.validarModo('existente');
+    
     this.manageForm
       .get('modo')!
       .valueChanges.subscribe((m: 'existente' | 'nuevo') => this.validarModo(m));
 
     // Opciones enum para el <select>
-    this.mediosOpts = Object.keys(MedioEnum)
-      .filter(k => !isNaN(Number(k))) // solo las claves numéricas del enum
-      .map(k => {
-        const name = this.MedioEnum[Number(k)] as keyof typeof MedioEnum;
-        const label = this.medioLabels[name] ?? String(name);
-        return { value: Number(k), label };
-      });
-
+    this.mediosOpts = medioDeTransporteOptions.map(o => ({
+      value: o.value,
+      label: this.medioLabels[o.key] ?? o.key,
+    }));
+    
     // Carga de datos
     const stream = (query: any) => {
       const input: GetViajesDto = this.toGetInput(query);
